@@ -2,7 +2,6 @@ data/
 cls_task/
 experiments/
 __pycache__
-model/*py
 
 /model/__pycache__/
 /utils/__pycache__/
