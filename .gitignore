@@ -9,16 +9,4 @@ model/*py
 ~/.*.pyc
 *.swp
 
-!model/model_reg.py
-!model/robust_train.py
-!model/train.py
-!model/open_attack.py
-
-!utils/dataloader_rat.py
-!utils/logger.py
-!utils/utils.py
-
-!main_org.py
-!main_rat.py
-!openattack_regression.py
 
