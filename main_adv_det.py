@@ -20,10 +20,11 @@ import os, sys
 from collections import Counter
 
 from model.train import LinearScheduler, batch_len
-from model.model_adv import *
+from model.model_adv_multi import *
+from model.robust_train import DetectionStat
 
 from utils.utils import boolean_string, print_args, load_checkpoint
-from utils.dataloader_rat import trans_detection_dataloader
+from utils.dataloader import trans_detection_dataloader
 import utils.logger as logger
 import datetime
 # from utils.task_eval import 
@@ -60,26 +61,19 @@ def get_parser(model_type: str):
     parser.add_argument('--model', default='distil', type=str, help='model', choices=['bert', 'distil', 'roberta'])
     parser.add_argument('--dropout', default=0.1, type=float, help='Dropout rate')
     parser.add_argument('--clip', default=1.0, type=float, help='Clip grad')
-    parser.add_argument('--top_k', type=int, default=20, help='Random sampling from a distribution')
     parser.add_argument('--top_p', type=float, default=0.05, help='Random sampling from a distribution')
-    parser.add_argument('--threshold', type=float, default=0.8, help='Threshold')
-    parser.add_argument('--perm', type=boolean_string, default=False, help='Print indices')
 
     parser.add_argument('--embed_dim', type=int, default=768, help='LSTM Input_Dim')
 
     # Inference
-    #parser.add_argument('--verbose', type=boolean_string, default=False, help='Print indices')
     parser.add_argument('--multi_mask', type=int, default=1, help='Masking multiple token')
-    parser.add_argument('--iterative', type=boolean_string, default=True, help='Min length filter')
     parser.add_argument('--conf_feature', type=str, default='conf_sub_square', help='Confidence feature type')
-    #parser.add_argument('--det_mode', default='grad', type=str, help='Detection Mode', choices=['grad', 'brute'])
     parser.add_argument('--dataset_type', default='test', type=str, help='Dataset', choices=['train', 'test'])
 
     # Dataset
     parser.add_argument('--dataset', default='mr', type=str, help='Dataset', 
             choices=['ag', 'mr', 'imdb', 'sst', 'wgra', 'yelp', 'mnli_id', 'mnli_ood'])
-    #parser.add_argument('--min_length_filter', type=boolean_string, default=True, help='Min length filter')
-    #parser.add_argument('--min_length', default=3, type=str, help='Minimum sentence length')
+    parser.add_argument('--nth_data', type=int, default=0, help='Dataset idx')
     parser.add_argument('--num_classes', type=int, default=2, help='number of classes')
     parser.add_argument('--pad_idx', type=int, default=0, help='Padding idx')
     parser.add_argument('--mask_idx', type=int, default=103, help='[MASK] idx')
@@ -125,11 +119,12 @@ else:
     print("Specify model correct...")
 
 if args.dataset=='mnli_id':
-    f_name = f"mnli_{args.attack_method}_{args.load_model}_{args.dataset_type}_p100_id_4.csv"
+    f_name = f"mnli_{args.attack_method}_{args.load_model}_{args.dataset_type}_id.csv"
 elif args.dataset=='mnli_ood':
-    f_name = f"mnli_{args.attack_method}_{args.load_model}_{args.dataset_type}_p100_ood_4.csv"
+    f_name = f"mnli_{args.attack_method}_{args.load_model}_{args.dataset_type}_ood.csv"
 else:
-    f_name = f"{args.dataset}_{args.attack_method}_{args.load_model}_{args.dataset_type}_p100_4.csv"
+    f_name = f"{args.dataset}_{args.attack_method}_{args.load_model}_{args.dataset_type}.csv"
+
 adv_path = os.path.join('./data/'+f_name)
 
 print(f"AdvPath: {adv_path}", flush=True) 
@@ -151,6 +146,10 @@ if args.dataset == 'ag':
 
 elif args.dataset == 'imdb':
     print(f"Load IMDB Dataset...")
+    args.num_classes = 2
+
+elif args.dataset == 'mr':
+    print(f"Load MR Dataset...")
     args.num_classes = 2
 
 elif args.dataset == 'wgra':
@@ -207,7 +206,7 @@ print("-------------------------------------------------------------------------
 print("--------------------------------------------------------------------------------------------------------------------------")
 print(f"Start Evaluation...", flush=True) 
 print(f"Model: {args.load_model} || Dataset: {adv_path} || Top-P: {args.top_p}", flush=True) 
-print(f"ConfFeature: {args.conf_feature} || Multi-Mask: {args.multi_mask} || IterGrad: {args.iterative}", flush=True)
+print(f"ConfFeature: {args.conf_feature} || Multi-Mask: {args.multi_mask}", flush=True)
 print("--------------------------------------------------------------------------------------------------------------------------")
 print("--------------------------------------------------------------------------------------------------------------------------")
 
@@ -226,7 +225,7 @@ def detection_function(model, input_ids, attention_mask, conf_org, pred, args):
     if args.conf_feature != "org":
         indices, _ = model.grad_detection_batch2(input_ids, attention_mask, topk=5, pred=pred) 
         output = model.iterative_grad_mask_detection_batch(input_ids, attention_mask, pred_org=pred, 
-                topk=args.top_p, indices=indices, iterative=args.iterative, multi_mask=args.multi_mask)
+                topk=args.top_p, indices=indices, multi_mask=args.multi_mask)
         confidence = output['confidence'] 
 
     val = (conf_org-confidence.min(axis=0))**2  

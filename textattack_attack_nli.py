@@ -35,8 +35,7 @@ from model.model_adv_multi import *
 import types
 
 from utils.utils import boolean_string, print_args, save_checkpoint, load_checkpoint
-from utils.dataloader_rat import build_dataset_vocab, text_dataloader_spacy
-#import utils.logger as logger
+from utils.dataloader import build_dataset_vocab, text_dataloader_spacy
 
 from datetime import timedelta
 import time, datetime
@@ -47,16 +46,9 @@ def get_parser(model_type: str):
     parser.add_argument('--exp_dir', type=str, default="./experiments/cls/", help='Experiment directory.')
     parser.add_argument('--exp_msg', type=str, default="CLS Transformer", help='Simple log for experiment')
 
-    # parser.add_argument('--deterministic', type=boolean_string, default=True, help='Deterministic')
     parser.add_argument('--eval', type=boolean_string, default=False, help='Evaluation')
     parser.add_argument('--model_dir_path', default='./', type=str, help='Save Model dir')
     parser.add_argument('--load_model', default='cls_attn_3', type=str, help='Model name')
-    #parser.add_argument('--load_model_disc', default='cls_trans', type=str, help='Discrimiantor model name')
-    #parser.add_argument('--load_model_mlm', default='cls_trans', type=str, help='MLM model name')
-
-    #parser.add_argument('--masknet_dir_path', default='./masknet/checkpoint/', type=str, help='Save Model dir')
-    #parser.add_argument('--load_masknet', default='cls_trans', type=str, help='Model name')
-    # parser.add_argument('--load_model_rl', default='bert_rl_v', type=str, help='RL Model name')
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu",
                         help="Device (cuda or cpu)")
@@ -73,31 +65,14 @@ def get_parser(model_type: str):
     parser.add_argument('--top_k', type=int, default=3, help='Random sampling from a distribution')
     parser.add_argument('--embed_dim', type=int, default=768, help='Attn Input_Dim')
     parser.add_argument('--p_vocab', default=1.0, type=float, help='Percentage of vocab')
-    #parser.add_argument('--mask_topk', type=int, default=3, help='MaskNet Inference Top-K')
-    #parser.add_argument('--hidden_dim', type=int, default=768, help='Attn hidden_Dim')
-
-
-    #parser.add_argument('--epsilon', default=0.05, type=float, help='Epsilon for attack')
-    #parser.add_argument('--aug_ratio', default=0.1, type=float, help='Epsilon for attack')
-
-    # Inference
-    #parser.add_argument('--num_ensemble', type=int, default=0, help='Number of ensemble inputs')
-    #parser.add_argument('--num_test', type=int, default=1000, help='Number of test')
-    #parser.add_argument('--noise_level', default=3.0, type=float, help='Gradient Noise Level')
 
     parser.add_argument('--result_check', type=boolean_string, default=False, help='Check result one more time')
 
     # Attack
     parser.add_argument('--attack_method', default='pwws', type=str, help='TextAttack Method',
-                        choices=['pwws', 'textfooler', 'iga', 'aga', 'fga', 'character', 'clare', 'a2t', 'bae'])
+                        choices=['pwws', 'textfooler', 'character', 'a2t', 'bae'])
 
-    #parser.add_argument('--p_prune', default=0.1, type=float, help='Embedding pruning percentage')
     parser.add_argument('--multi_mask', type=int, default=1, help='Masking multiple token')
-    parser.add_argument('--mask', type=boolean_string, default=False, help='Min length filter')
-    #parser.add_argument('--smooth_grad', type=boolean_string, default=False, help='Min length filter')
-    #parser.add_argument('--n_smooth', type=int, default=1, help='Masking multiple token')
-    #parser.add_argument('--nth_layers', type=int, default=3, help='[MASK] idx')
-    parser.add_argument('--noise_eps', type=float, default=0.1, help='[MASK] idx')
 
     # Dataset
     parser.add_argument('--save_data', type=boolean_string, default=True, help='Save data')
@@ -107,15 +82,9 @@ def get_parser(model_type: str):
     parser.add_argument('--mnli_dist', default='mr', type=str, help='MNLI Dist', choices=['ood', 'id'])
 
     parser.add_argument('--dataset_type', default='test', type=str, help='Dataset', choices=['train', 'test'])
-    parser.add_argument('--nth_data', type=int, default=0, help='Dataset idx')
-    parser.add_argument('--min_length_filter', type=boolean_string, default=True, help='Min length filter')
-    parser.add_argument('--min_length', default=3, type=str, help='Minimum sentence length')
     parser.add_argument('--num_classes', type=int, default=2, help='number of classes')
     parser.add_argument('--pad_idx', type=int, default=0, help='Padding idx')
     parser.add_argument('--mask_idx', type=int, default=103, help='[MASK] idx')
-    parser.add_argument('--mask_p', type=float, default=0.1, help='[MASK] idx')
-    parser.add_argument('--prep', type=boolean_string, default=False, help='Dataset preprocessing')
-    parser.add_argument('--split', type=boolean_string, default=False, help='Dataset Split')
 
     parser.add_argument('--n_success', type=int, default=1000, help='Num Adv Success')
     parser.add_argument('--shuffle', type=boolean_string, default=True, help='Dataset Split')
@@ -164,11 +133,7 @@ elif args.dataset_type=='test':
 dataset = textattack.datasets.Dataset(dataset_list, input_columns=("premise", "hypothesis"))
 args.num_classes = 3
 
-if args.nth_data == 0:
-    f_name = "_"+str(args.load_model)+"_"+args.dataset_type+"_p"+str(int(args.p_vocab*100))+"_"+str(args.mnli_dist)+".csv"
-else: 
-    f_name = "_"+str(args.load_model)+"_"+args.dataset_type+"_p"+str(int(args.p_vocab*100))+"_"+str(args.mnli_dist)+f"_{args.nth_data}.csv"
-
+f_name = "_"+str(args.load_model)+"_"+args.dataset_type+"_"+str(args.mnli_dist)+".csv"
 adv_path = os.path.join('./data/'+args.dataset+'_'+args.attack_method+f_name)
 args.adv_path = adv_path
 

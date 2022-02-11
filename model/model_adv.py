@@ -950,9 +950,7 @@ class ClsTextDet(nn.Module):
         self.num_classes = args.num_classes
         self.device = args.device
         self.pad_idx = args.pad_idx
-        self.text_split = args.text_split
         self.mask_idx = args.mask_idx
-        #self.batchnorm = nn.BatchNorm1d(768, affine=False)
 
     def embeddings(self, input_ids, attention_mask):
         outputs = self.enc.encoder(input_ids, attention_mask, output_hidden_states=True)
@@ -991,10 +989,7 @@ class ClsTextDet(nn.Module):
             if b_len.item()<topk:
                 topk = b_len.item()-1
 
-        #if input_ids.shape[0]==1:
-
         if pred is None:
-            #emb_x_, inputs_embeds = self.embedding_encoder(input_ids, attention_mask, return_emb=True)
             with torch.no_grad():
                 out_dict = self.forward(input_ids, attention_mask)
             logits = out_dict['logits']
@@ -1062,7 +1057,7 @@ class ClsTextDet(nn.Module):
 
         return emb_grads
 
-    def iterative_grad_mask_detection_batch(self, input_ids, attention_mask, pred_org, topk=10, indices=None, multi_mask=0, iterative=False):
+    def iterative_grad_mask_detection_batch(self, input_ids, attention_mask, pred_org, topk=10, indices=None, multi_mask=0):
         """
         - x: input
         """
@@ -1093,24 +1088,13 @@ class ClsTextDet(nn.Module):
             confidence_list.append(conf_l)
             prediction_list.append(pred_l)
 
-            if iterative:
-                #indices_it = self.grad_detection_batch(masked_ids, attention_mask, 3, pred_org)
-                indices, _ = self.grad_detection_batch2(masked_ids, attention_mask, topk=5, pred=pred_org) 
-
-                for i, _ in enumerate(masked_ids):
-                    try:
-                        masked_ids[i][indices_it[i][0]] = self.mask_idx
-                    except:
-                        continue
-
-            else:
-                masked_ids = input_ids.clone()
-                for k, _ in enumerate(masked_ids):
-                    try:
-                        masked_ids[k][indices[k][m_idx+1]] = self.mask_idx
-                    except:
-                        print("Skipped")
-                        continue
+            masked_ids = input_ids.clone()
+            for k, _ in enumerate(masked_ids):
+                try:
+                    masked_ids[k][indices[k][m_idx+1]] = self.mask_idx
+                except:
+                    print("Skipped")
+                    continue
 
         output = {'prediction_list': prediction_list, 'indices': indices, 'confidence': np.array(confidence_list)}
 
@@ -1246,36 +1230,6 @@ class ClsText(nn.Module):
         self.device = args.device
         self.pad_idx = args.pad_idx
         self.mask_idx = args.mask_idx
-        #self.batchnorm = nn.BatchNorm1d(768, affine=False)
-
-    def embeddings(self, input_ids, attention_mask):
-        outputs = self.enc.encoder(input_ids, attention_mask, output_hidden_states=True)
-        embs = outputs['hidden_states']
-        emb_init = embs[0]
-        emb_last = embs[-1]
-
-        return emb_last, emb_init
-
-    def noisy_embedding_encoder(self, inputs_embeds, attention_mask):
-        output_attentions = self.enc.encoder.config.output_attentions
-        output_hidden_states = (self.enc.encoder.config.output_hidden_states)
-        return_dict = self.enc.encoder.config.use_return_dict
-        head_mask = self.enc.encoder.get_head_mask(None, self.enc.encoder.config.num_hidden_layers)
-
-#        inputs_embeds = self.enc.encoder.embeddings(input_ids)
-#        randn_noise = torch.randn_like(inputs_embeds)*self.epsilon
-#        indices = torch.randperm(inputs_embeds.size(1))[:int(input_ids.size(1)*0.7)]
-#        randn_noise[:,indices,:] = 0
-#        inputs_embeds_noise = inputs_embeds+randn_noise
-
-        output = self.enc.encoder.transformer(
-            x=inputs_embeds,
-            attn_mask=attention_mask,
-            head_mask=head_mask,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,)
-        return output
 
     def forward(self, input_ids, attention_mask, labels=None):
         """
@@ -1285,19 +1239,13 @@ class ClsText(nn.Module):
 
         hidden_state = emb_x_[0]  # (bs, seq_len, dim)
         emb_x = hidden_state[:, 0]  # (bs, dim)
-        #emb_bn_x = self.batchnorm(emb_x)
         logits = self.cls(emb_x) # output from a FC layer
         
 
         if labels is not None:
 
-            # Cross Entropy
-            #loss_fn = nn.MSELoss()
             loss_fn = nn.CrossEntropyLoss()
             loss_ce = loss_fn(logits.view(-1, self.num_classes), labels.view(-1))
-
-#            loss_fn = SmoothCrossEntropyLoss(smoothing=0.1)
-#            loss_ce = loss_fn(logits.view(-1, self.num_classes).softmax(dim=-1), labels.view(-1))
 
             output = {'logits': logits, 'loss': loss_ce, 'emb': emb_x}
 
@@ -1307,36 +1255,6 @@ class ClsText(nn.Module):
 
         return output
 
-    def encoding(self, x):
-        return self.enc(x)
-
-    def encoding_tokens_norm(self, input_ids):
-        src_mask_1 = (input_ids!=0)
-        #src_mask_2 = (input_ids!=102)
-        #src_mask_3 = (input_ids!=101)
-
-        src_mask = src_mask_1 #& src_mask_2 & src_mask_3
-        src_mask = src_mask==False
-
-        enc_out = self.enc.encoder(input_ids)
-        hidden_state = enc_out[0]  # (bs, seq_len, dim)
-        norm = torch.norm(hidden_state, p=2, dim=-1)
-        norm = norm.masked_fill(src_mask, 0)
-        return norm, src_mask
-
-    def encoding_tokens_norm_min(self, input_ids):
-        src_mask_1 = (input_ids!=0)
-        src_mask_2 = (input_ids!=102)
-        src_mask_3 = (input_ids!=101)
-
-        src_mask = src_mask_1 & src_mask_2 & src_mask_3
-        src_mask = src_mask==False
-
-        enc_out = self.enc.encoder(input_ids)
-        hidden_state = enc_out[0]  # (bs, seq_len, dim)
-        norm = torch.norm(hidden_state, p=2, dim=-1)
-        norm = norm.masked_fill(src_mask, 10000)
-        return norm, src_mask
 
 
 class SeqRegModel(nn.Module):

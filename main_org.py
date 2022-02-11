@@ -1,13 +1,14 @@
 import torch
+import torch.nn.functional as F
 from transformers import AdamW
 from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification
 from transformers import DistilBertTokenizer, DistilBertModel
 from transformers import RobertaTokenizer, RobertaModel
 from transformers import BertTokenizer, BertForSequenceClassification, BertModel
 from transformers import get_linear_schedule_with_warmup
-from datasets import load_dataset, Dataset
+
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
+from datasets import load_dataset, Dataset
 
 import pdb
 import numpy as np
@@ -15,25 +16,14 @@ import random
 import pandas as pd
 import os, sys
 
-from model.train import LinearScheduler, masking_fn, stopwords_id, trainer_full, batch_len
-from model.model_adv import *
-# from model.robust_train import onezero_encoder, max_loss
+from model.train import LinearScheduler, batch_len
+from model.model_adv_multi import *
 
 from utils.utils import boolean_string, print_args, save_checkpoint, model_eval, load_checkpoint, model_evaluation
-from utils.dataloader_rat import trans_dataloader#, trans_dataloader2
-#from utils.dataloader import trans_dataloader, trans_dataloader2
-#from utils.dataloader import adv_dataloader, build_dataset_vocab, sent2idx_mask 
+from utils.dataloader import trans_dataloader
 import utils.logger as logger
 import datetime
-# from utils.task_eval import 
 import argparse
-
-#import nltk
-#from nltk.corpus import stopwords
-#from nltk.tokenize import word_tokenize
-#from nltk.corpus import wordnet
-
-#from model.text_attack import ClsTextDEM
 
 
 def get_parser(model_type: str):
@@ -42,15 +32,11 @@ def get_parser(model_type: str):
     parser.add_argument('--exp_msg', type=str, default="CLS Transformer", help='Simple log for experiment')
     parser.add_argument('--gpu_idx', type=int, default=10, help='GPU Index')
 
-    # parser.add_argument('--deterministic', type=boolean_string, default=True, help='Deterministic')
     parser.add_argument('--eval', type=boolean_string, default=False, help='Evaluation')
     parser.add_argument('--model_dir_path', default='./', type=str, help='Save Model dir')
     parser.add_argument('--save_model', default='cls_trans', type=str, help='Save Model name')
     parser.add_argument('--load_model', default='cls_trans', type=str, help='Model name')
     parser.add_argument('--save', type=boolean_string, default=True, help='Evaluation')
-
-    #parser.add_argument('--masknet_dir_path', default='./', type=str, help='Save Model dir')
-    #parser.add_argument('--load_masknet', default='cls_trans', type=str, help='Model name')
 
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu",
@@ -70,31 +56,17 @@ def get_parser(model_type: str):
     parser.add_argument('--lr', default=0.0001, type=float, help='Agent learning rate')
     parser.add_argument('--dropout', default=0.1, type=float, help='Dropout rate')
     parser.add_argument('--clip', default=1.0, type=float, help='Clip grad')
-    #parser.add_argument('--rand_mask', type=boolean_string, default=True, help='Random Masking')
     parser.add_argument('--top_k', type=int, default=3, help='Random sampling from a distribution')
-    #parser.add_argument('--margin', default=0.5, type=float, help='Triplet loss margin')
-    #parser.add_argument('--full_train', type=boolean_string, default=True, help='Full training')
     parser.add_argument('--p_vocab', default=0.1, type=float, help='Percentage of vocab')
 
     parser.add_argument('--embed_dim', type=int, default=768, help='LSTM Input_Dim')
 
-    # Inference
-    #parser.add_argument('--num_ensemble', type=int, default=4, help='Number of ensemble inputs')
-
     # Dataset
     parser.add_argument('--dataset', default='mr', type=str, help='Dataset', 
             choices=['ag', 'mr', 'imdb', 'mnli', 'sst', 'clinc', 'clinc_ood', 'clinc_oop', 'clinc_small', 'yelp', 'wnli'])
-    #parser.add_argument('--min_length_filter', type=boolean_string, default=True, help='Min length filter')
-    #parser.add_argument('--min_length', default=3, type=str, help='Minimum sentence length')
     parser.add_argument('--num_classes', type=int, default=2, help='number of classes')
     parser.add_argument('--pad_idx', type=int, default=0, help='Padding idx')
     parser.add_argument('--mask_idx', type=int, default=103, help='[MASK] idx')
-    #parser.add_argument('--mask_p', type=float, default=0.3, help='[MASK] idx')
-    #parser.add_argument('--prep', type=boolean_string, default=False, help='Dataset preprocessing')
-    #parser.add_argument('--split', type=boolean_string, default=False, help='Dataset Split')
-    #parser.add_argument('--memory_size', type=int, default=64, help='Memory Size')
-    #parser.add_argument('--max_candidates', type=int, default=50, help='# Synonym candidates')
-    #parser.add_argument('--skip_check_p', default=0.4, type=float, help='Check synonym or not')
 
     args = parser.parse_known_args()[0]
 
