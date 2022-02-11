@@ -1,0 +1,5 @@
+textattack==0.3.4
+transformers==4.6.1
+datasets==1.8.0
+ood-metrics==0.2.9
+torch==1.10.0
