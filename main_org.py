@@ -27,7 +27,7 @@ import argparse
 
 
 def get_parser(model_type: str):
-    parser = argparse.ArgumentParser(description='RL based Adv Attack ')
+    parser = argparse.ArgumentParser(description='Training')
     parser.add_argument('--exp_dir', type=str, default="./experiments/cls/", help='Experiment directory.')
     parser.add_argument('--exp_msg', type=str, default="CLS Transformer", help='Simple log for experiment')
     parser.add_argument('--gpu_idx', type=int, default=10, help='GPU Index')
