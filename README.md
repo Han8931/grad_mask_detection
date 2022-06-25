@@ -2,6 +2,8 @@
 
 Accepted in 28th SIGKDD Conference on Knowledge Discovery and Data Mining.
 
+
+<img src="./assets/overview.png" width="100" height="100">
 ![img](./assets/overview.png | width=100)
 
 ## Commands
