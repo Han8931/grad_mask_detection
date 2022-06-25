@@ -2,7 +2,9 @@
 
 Accepted in 28th SIGKDD Conference on Knowledge Discovery and Data Mining.
 
-## Command
+![img](./assets/overview.jpg "Title")
+
+## Commands
 Train a classifier:
 ```
 CUDA_VISIBLE_DEVICES=0 python3 main_org.py --model_dir_path ./cls_task/checkpoint/ --dataset imdb --lr 0.00001 --batch_size 16 --epochs 10 --save_model cls_rob_large_imdb_test --epochs 10 --model roberta
