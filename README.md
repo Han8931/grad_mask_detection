@@ -3,7 +3,7 @@
 Accepted in 28th SIGKDD Conference on Knowledge Discovery and Data Mining.
 
 <p align="center">
-<img src="./assets/overview.png" width="300" height="300">
+<img src="./assets/overview.png" width="350" height="350">
 </p>
 
 ## Commands
