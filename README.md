@@ -2,7 +2,7 @@
 
 Accepted in 28th SIGKDD Conference on Knowledge Discovery and Data Mining.
 
-![img](./assets/overview.pdf "Title")
+![img](./assets/overview.png "Title")
 
 ## Commands
 Train a classifier:
