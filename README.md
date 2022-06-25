@@ -2,8 +2,9 @@
 
 Accepted in 28th SIGKDD Conference on Knowledge Discovery and Data Mining.
 
-
+<p align="center">
 <img src="./assets/overview.png" width="300" height="300">
+</p>
 
 ## Commands
 Train a classifier:
