@@ -1,6 +1,7 @@
 # GradMask: Gradient-Guided Token Masking for Textual Adversarial Example Detection
 
-Accepted in 28th SIGKDD Conference on Knowledge Discovery and Data Mining.
+- Accepted in 28th SIGKDD Conference on Knowledge Discovery and Data Mining.
+- [Paper link](https://dl.acm.org/doi/abs/10.1145/3534678.3539206)
 
 <p align="center">
 <img src="./assets/overview.png" width="400" height="350">
